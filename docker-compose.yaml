@@ -1,0 +1,55 @@
+version: "3.9"
+services:
+
+  fluentd:
+    image: fluentd:latest
+    volumes:
+      - type: bind
+        source: /data/logs
+        target: /fluentd/log
+    ports:
+      - "24224:24224"
+
+  mysql:
+    depends_on:
+      - fluentd
+    image: mysql:5.7
+    restart: always
+    volumes:
+      - mysql:/var/lib/mysql
+    logging:
+      driver: fluentd
+      options:
+        fluentd-address: 127.0.0.1:24224
+    networks:
+      back:
+        aliases:
+          - mysql
+    env_file:
+      - ./mysql.env
+
+  wordpress:
+    depends_on:
+      - fluentd
+      - mysql
+    image: wordpress:latest
+    restart: always
+    volumes:
+      - uploads:/var/www/html
+    logging:
+      driver: fluentd
+      options:
+        fluentd-address: 127.0.0.1:24224
+    networks:
+      - back
+    ports:
+      - "80:80"
+    env_file:
+      - ./wordpress.env
+
+volumes:
+  mysql: {}
+  uploads: {}
+
+networks:
+  back: {}
